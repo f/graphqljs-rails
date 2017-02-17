@@ -1,11 +1,13 @@
 # GraphQL.js for Rails
 
+Adds [GraphQL.js](http://github.com/f/graphql.js) to your asset pipeline.
+
 ## Installation
 
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'graphqljs-rails', '<version>'
+gem 'graphqljs-rails'
 ```
 
 And then execute:
