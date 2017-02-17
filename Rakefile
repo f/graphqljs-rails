@@ -13,5 +13,7 @@ task :update do
   sh("git commit -m v#{js_version}")
   sh("git tag v#{js_version}")
   sh("git push origin master --tags")
+  sh("gem build ./graphql-rails.gemspec")
+  sh("gem push ./graphql-rails-#{js_version}.gem")
 end
 
