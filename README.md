@@ -2,6 +2,13 @@
 
 Adds [GraphQL.js](https://github.com/f/graphql.js) to your asset pipeline.
 
+## Features
+
+ - Nothing depended, plain vanilla JavaScript.
+ - Plug & Play.
+ - Runs on most of the browsers.
+ - **For more information and read how to use GraphQL.js in your Rails application, visit [f/graphql.js] (https://github.com/f/graphql.js)**
+
 If you are **looking for a server** try [GraphQL-Ruby](https://github.com/rmosolgo/graphql-ruby). This gem works with [GraphQL-Ruby](https://github.com/rmosolgo/graphql-ruby).
 
 ## Installation
@@ -18,7 +25,14 @@ And then execute:
 
 And install it to your `application.js`:
 
-    //= require graphql
+```js
+//= require graphql
+var graph = graphql("/graphql", {
+  fragments: {
+    ...
+  }
+})
+```
 
 ## License
 
