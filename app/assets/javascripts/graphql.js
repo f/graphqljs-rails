@@ -25,18 +25,10 @@
     return extended
   }
   
-  function __xhr() {
-    if (window.XMLHttpRequest) {
-      return new window.XMLHttpRequest
-    } else {
-      try { return new ActiveXObject("MSXML2.XMLHTTP.3.0") } catch(ex) { return null }
-    }
-  }
-  
   function __request(method, url, headers, data, callback) {
     var body = "query=" + escape(data.query) + "&variables=" + escape(JSON.stringify(data.variables))
     if (typeof XMLHttpRequest != 'undefined') {
-      var xhr = __xhr()
+      var xhr = new XMLHttpRequest
       xhr.open(method, url, true)
       xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded')
       xhr.setRequestHeader('Accept', 'application/json')
@@ -86,7 +78,7 @@
       }
       return _lazy
     } else if (arguments[2] !== true) {
-      throw "You cannot create GraphQLClient instance. Please call GraphQLClient as function."
+      throw new Error("You cannot create GraphQLClient instance. Please call GraphQLClient as function.")
     }
     if (!options)
     options = {}
@@ -132,7 +124,7 @@
     var getter = new Function("fragments", "return fragments." + path.replace(/\./g, FRAGMENT_SEPERATOR))
     var obj = getter(fragments)
     if (path != "on" && (!obj || typeof obj != "string")) {
-      throw "Fragment " + path + " not found"
+      throw new Error("Fragment " + path + " not found")
     }
     return obj
   }
@@ -147,7 +139,7 @@
       if (fragment) {
         var pathRegexp = new RegExp(fragmentRegexp.source.replace(/\((.*)\)/, path))
         if (fragment.match(pathRegexp)) {
-          throw "Recursive fragment usage detected on " + path + "."
+          throw new Error("Recursive fragment usage detected on " + path + ".")
         }
         collectedFragments.push(fragment)
         // Collect sub fragments
