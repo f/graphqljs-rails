@@ -16,21 +16,31 @@
         }
       }
     }
-    
+
     for (; i < length; i++) {
       var obj = arguments[i]
       merge(obj)
     }
-    
+
     return extended
   }
-  
-  function __request(method, url, headers, data, callback) {
-    var body = "query=" + escape(data.query) + "&variables=" + escape(JSON.stringify(data.variables))
+
+  function __unique(array) {
+    return array.filter( function onlyUnique(value, index, self) {
+      return self.indexOf(value) === index;
+    })
+  }
+
+  function __request(method, url, headers, data, asJson, callback) {
+    if (asJson) {
+      var body = JSON.stringify({query: data.query, variables: data.variables});
+    } else {
+      var body = "query=" + encodeURIComponent(data.query) + "&variables=" + encodeURIComponent(JSON.stringify(data.variables))
+    }
     if (typeof XMLHttpRequest != 'undefined') {
       var xhr = new XMLHttpRequest
       xhr.open(method, url, true)
-      xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded')
+      xhr.setRequestHeader('Content-Type', (asJson ? 'application/json' : 'application/x-www-form-urlencoded'))
       xhr.setRequestHeader('Accept', 'application/json')
       for (var key in headers) { xhr.setRequestHeader(key, headers[key]) }
       xhr.onerror = function () { callback(xhr, xhr.status) }
@@ -45,7 +55,7 @@
         path: uri.path,
         method: "POST",
         headers: __extend({
-          'Content-type': 'application/x-www-form-urlencoded',
+          'Content-type': (asJson ? 'application/json' : 'application/x-www-form-urlencoded'),
           'Accept': 'application/json'
         }, headers)
       }, function (response) {
@@ -60,11 +70,11 @@
       req.end()
     }
   }
-  
+
   function __isTagCall(strings) {
     return Object.prototype.toString.call(strings) == '[object Array]' && strings.raw
   }
-  
+
   function GraphQLClient(url, options) {
     if (!(this instanceof GraphQLClient)) {
       var client = new GraphQLClient(url, options, true)
@@ -82,24 +92,24 @@
     }
     if (!options)
     options = {}
-    
+
     if (!options.fragments)
     options.fragments = {}
-    
-    this.options = options
+
+    this.options = options || {}
     this._fragments = this.buildFragments(options.fragments)
     this._sender = this.createSenderFunction(url)
     this.createHelpers(this._sender)
   }
-  
+
   // "fragment auth.login" will be "fragment auth_login"
   FRAGMENT_SEPERATOR = "_"
-  
+
   // The autodeclare keyword.
   GraphQLClient.AUTODECLARE_PATTERN = /\(@autodeclare\)|\(@autotype\)/
-  
+
   GraphQLClient.FRAGMENT_PATTERN = /\.\.\.\s*([A-Za-z0-9\.\_]+)/g
-  
+
   // Flattens nested object
   /*
   * {a: {b: {c: 1, d: 2}}} => {"a.b.c": 1, "a.b.d": 2}
@@ -115,7 +125,7 @@
     }
     return out
   }
-  
+
   // Gets path from object
   /*
   * {a: {b: {c: 1, d: 2}}}, "a.b.c" => 1
@@ -128,7 +138,7 @@
     }
     return obj
   }
-  
+
   GraphQLClient.prototype.collectFragments = function (query, fragments) {
     var that = this
     var fragmentRegexp = GraphQLClient.FRAGMENT_PATTERN
@@ -153,9 +163,9 @@
         }
       }
     })
-    return collectedFragments
+    return __unique(collectedFragments)
   }
-  
+
   GraphQLClient.prototype.processQuery = function (query, fragments) {
     var fragmentRegexp = GraphQLClient.FRAGMENT_PATTERN
     var collectedFragments = this.collectFragments(query, fragments)
@@ -167,7 +177,7 @@
       return !query.match(fragment)
     })).join("\n")
   }
-  
+
   GraphQLClient.prototype.autoDeclare = function (query, variables) {
     var typeMap = {
       string: "String",
@@ -188,7 +198,7 @@
       return types ? "("+ types +")" : ""
     })
   }
-  
+
   GraphQLClient.prototype.cleanAutoDeclareAnnotations = function (variables) {
     if (!variables) variables = {}
     var newVariables = {}
@@ -199,7 +209,7 @@
     }
     return newVariables
   }
-  
+
   GraphQLClient.prototype.buildFragments = function (fragments) {
     var that = this
     fragments = this.flatten(fragments || {})
@@ -214,11 +224,11 @@
     }
     return fragmentObject
   }
-  
+
   GraphQLClient.prototype.buildQuery = function (query, variables) {
     return this.autoDeclare(this.processQuery(query, this._fragments, variables), variables)
   }
-  
+
   GraphQLClient.prototype.createSenderFunction = function (url) {
     var that = this
     return function (query) {
@@ -230,12 +240,12 @@
         if (!variables) variables = {}
         var fragmentedQuery = that.buildQuery(query, variables)
         headers = __extend((that.options.headers||{}), (requestOptions.headers||{}))
-        
+
         return new Promise(function (resolve, reject) {
           __request(that.options.method || "post", url, headers, {
             query: fragmentedQuery,
             variables: that.cleanAutoDeclareAnnotations(variables)
-          }, function (response, status) {
+          }, !!that.options.asJSON, function (response, status) {
             if (status == 200) {
               if (response.errors) {
                 reject(response.errors)
@@ -254,7 +264,7 @@
       return caller
     }
   }
-  
+
   GraphQLClient.prototype.createHelpers = function (sender) {
     var that = this
     function helper(query) {
@@ -295,15 +305,19 @@
       return sender(query, {})
     }
   }
-  
+
   GraphQLClient.prototype.fragments = function () {
     return this._fragments
   }
-  
+
   GraphQLClient.prototype.getOptions = function () {
-    return this.options
+    return this.options || {}
   }
-  
+
+  GraphQLClient.prototype.headers = function (newHeaders) {
+    return this.options.headers = __extend(this.options.headers, newHeaders)
+  }
+
   GraphQLClient.prototype.fragment = function (fragment) {
     if (typeof fragment == 'string') {
       var _fragment = this._fragments[fragment.replace(/\./g, FRAGMENT_SEPERATOR)]
@@ -317,7 +331,7 @@
       return this._fragments
     }
   }
-  
+
   GraphQLClient.prototype.ql = function (strings) {
     var that = this
     fragments = Array.prototype.slice.call(arguments, 1)
@@ -333,7 +347,7 @@
     query = ((this.__prefix||"") + " " + query + " " + (this.__suffix||"")).trim()
     return query
   }
-  
+
   ;(function (root, factory) {
     if (typeof define === 'function' && define.amd) {
       define(function () {
